@@ -187,3 +187,8 @@
 @utility animate-sweep {
   animation: sweep 1.6s cubic-bezier(0.32, 0.72, 0, 1) infinite;
 }
+
+.score-ring {
+  background: conic-gradient(var(--action) 0 78%, color-mix(in oklab, var(--ink) 10%, transparent) 78% 100%);
+  border-radius: 9999px;
+}
