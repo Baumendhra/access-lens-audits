@@ -36,7 +36,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
+  --color-muted: var(--muted-foreground);
+  --color-muted-bg: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
@@ -100,7 +101,7 @@
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
+  --muted-foreground: oklch(0.38 0.04 250);
   --accent: oklch(0.968 0.007 247.896);
   --accent-foreground: oklch(0.208 0.042 265.755);
   --destructive: oklch(0.577 0.245 27.325);
@@ -192,3 +193,26 @@
   background: conic-gradient(var(--action) 0 78%, color-mix(in oklab, var(--ink) 10%, transparent) 78% 100%);
   border-radius: 9999px;
 }
+
+/* High visibility focus ring utility for WCAG 2.4.7 AA */
+*:focus-visible {
+  outline: 3px solid #1E5AA8 !important;
+  outline-offset: 2px !important;
+}
+
+/* Print Stylesheet for Report Export */
+@media print {
+  aside, header, nav, button, .no-print {
+    display: none !important;
+  }
+  body, main {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .animate-rise {
+    animation: none !important;
+  }
+}
+

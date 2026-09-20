@@ -1,0 +1,108 @@
+import { useState } from "react";
+import { Keyboard, Volume2, Eye, Palette, Hand, Check, AlertCircle, Info } from "lucide-react";
+import { PersonaProfile, personaProfiles, Issue } from "../lib/scanEngine";
+
+interface PersonaSimulatorProps {
+  issues: Issue[];
+  onSelectIssue?: (issue: Issue) => void;
+}
+
+export function PersonaSimulator({ issues, onSelectIssue }: PersonaSimulatorProps) {
+  const [selectedId, setSelectedId] = useState<string>("keyboard");
+
+  const currentPersona = personaProfiles.find((p) => p.id === selectedId) || personaProfiles[0];
+  const affected = issues.filter((i) => currentPersona.affectedIssueIds.includes(i.id) || i.category.toLowerCase().includes(selectedId.replace("-only", "")));
+
+  const getIcon = (iconName: string) => {
+    switch (iconName) {
+      case "Keyboard":
+        return Keyboard;
+      case "Volume2":
+        return Volume2;
+      case "Eye":
+        return Eye;
+      case "Palette":
+        return Palette;
+      default:
+        return Hand;
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-rule bg-surface p-6 shadow-xs">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-rule pb-4">
+        <div>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-action">Simulation &amp; Testing Profile</span>
+          <h2 className="text-xl font-bold text-navy">User Persona Accessibility Evaluation</h2>
+        </div>
+        <div className="flex items-center gap-2 rounded-md bg-canvas px-3 py-1.5 text-xs text-muted">
+          <Info className="size-3.5 text-action" />
+          <span>Testing profile simulation (not a claim to replace lived experience)</span>
+        </div>
+      </div>
+
+      {/* Persona Chips Selection */}
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {personaProfiles.map((persona) => {
+          const Icon = getIcon(persona.icon);
+          const active = persona.id === selectedId;
+          return (
+            <button
+              key={persona.id}
+              onClick={() => setSelectedId(persona.id)}
+              className={`flex flex-col items-center gap-2 rounded-lg border p-3.5 text-center transition-all ${
+                active
+                  ? "border-action bg-action/10 text-action shadow-xs font-semibold ring-2 ring-action/20"
+                  : "border-rule bg-canvas/40 text-muted hover:bg-ink/5 hover:text-ink"
+              }`}
+            >
+              <Icon className="size-5 shrink-0" />
+              <span className="text-xs">{persona.name}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selected Persona Impact Summary */}
+      <div className="mt-6 rounded-lg border border-rule bg-canvas p-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-bold text-navy text-base">{currentPersona.name} Profile</h3>
+            <p className="mt-1 text-xs text-muted max-w-2xl leading-relaxed">{currentPersona.description}</p>
+          </div>
+          <span className="rounded-full bg-serious/10 px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-serious font-semibold">
+            {affected.length} Barriers Detected
+          </span>
+        </div>
+
+        {/* Affected Issues Breakdown */}
+        <div className="mt-5 space-y-3">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-muted">Impacted WCAG Findings</p>
+          {affected.length === 0 ? (
+            <div className="flex items-center gap-2 rounded-md border border-passed/20 bg-passed/10 p-3 text-xs text-passed">
+              <Check className="size-4 shrink-0" />
+              <span>No critical barriers detected for this specific user persona profile.</span>
+            </div>
+          ) : (
+            affected.slice(0, 4).map((issue) => (
+              <div
+                key={issue.id}
+                onClick={() => onSelectIssue && onSelectIssue(issue)}
+                className="flex items-center justify-between rounded-md border border-rule bg-surface p-3 text-xs transition-colors hover:bg-ink/5 cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="size-4 text-serious shrink-0" />
+                  <div>
+                    <strong className="font-semibold text-navy">{issue.title}</strong>
+                    <span className="ml-2 font-mono text-[10px] text-muted">({issue.wcag})</span>
+                  </div>
+                </div>
+                <span className="font-mono text-[10px] text-action font-semibold">Inspect fix →</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
