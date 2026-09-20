@@ -1,0 +1,4 @@
+- [ ] Build AccessLens landing page and demo scan flow
+- [ ] Add report, issues, issue detail, journeys, reports, and integrations views
+- [ ] Add responsive shell, semantic tokens, and route metadata
+- [ ] Verify the main demo flow in the live preview
