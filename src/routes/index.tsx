@@ -1648,16 +1648,90 @@ function Disclaimer() {
   );
 }
 
+function AccessLensLogo({ className = "size-8" }: { className?: string }) {
+  return (
+    <svg 
+      className={className} 
+      viewBox="0 0 40 40" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="AccessLens Logo"
+    >
+      <defs>
+        <linearGradient id="al-logo-bg" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#0F172A" />
+          <stop offset="0.5" stopColor="#1E1B4B" />
+          <stop offset="1" stopColor="#0369A1" />
+        </linearGradient>
+        <linearGradient id="al-logo-ring" x1="6" y1="6" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#38BDF8" />
+          <stop offset="0.5" stopColor="#818CF8" />
+          <stop offset="1" stopColor="#34D399" />
+        </linearGradient>
+        <linearGradient id="al-logo-core" x1="14" y1="14" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#F0FDFA" />
+          <stop offset="1" stopColor="#38BDF8" />
+        </linearGradient>
+        <radialGradient id="al-logo-glow" cx="20" cy="20" r="14" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#38BDF8" stopOpacity="0.4" />
+          <stop offset="1" stopColor="#38BDF8" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      
+      {/* Background Badge with Rounded Corners */}
+      <rect width="40" height="40" rx="11" fill="url(#al-logo-bg)" />
+      <rect x="0.75" y="0.75" width="38.5" height="38.5" rx="10.25" stroke="white" strokeOpacity="0.15" strokeWidth="1.5" />
+
+      {/* Radial Soft Background Glow */}
+      <circle cx="20" cy="20" r="14" fill="url(#al-logo-glow)" />
+
+      {/* Precision Lens Scan Ring */}
+      <circle cx="20" cy="20" r="12" stroke="url(#al-logo-ring)" strokeWidth="2.5" strokeDasharray="52 16" strokeLinecap="round" transform="rotate(-45 20 20)" />
+
+      {/* Futuristic Stylized Eye / Aperture Lens */}
+      <path
+        d="M8 20C8 20 13.5 11.5 20 11.5C26.5 11.5 32 20 32 20C32 20 26.5 28.5 20 28.5C13.5 28.5 8 20 8 20Z"
+        stroke="white"
+        strokeWidth="2"
+        strokeOpacity="0.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Scanner Focus Reticle (4 Ticks) */}
+      <line x1="20" y1="7.5" x2="20" y2="10" stroke="#38BDF8" strokeWidth="2" strokeLinecap="round" />
+      <line x1="20" y1="30" x2="20" y2="32.5" stroke="#38BDF8" strokeWidth="2" strokeLinecap="round" />
+      <line x1="7.5" y1="20" x2="10" y2="20" stroke="#38BDF8" strokeWidth="2" strokeLinecap="round" />
+      <line x1="30" y1="20" x2="32.5" y2="20" stroke="#38BDF8" strokeWidth="2" strokeLinecap="round" />
+
+      {/* Inner Pupil / Compliance Shield Spark Core */}
+      <circle cx="20" cy="20" r="4.5" fill="url(#al-logo-core)" />
+      
+      {/* Dynamic Accessible Shield Checkmark */}
+      <path 
+        d="M18.2 20.1L19.5 21.4L22.1 18.7" 
+        stroke="#0F172A" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+      />
+    </svg>
+  );
+}
+
 function Brand() {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="grid size-7 place-items-center rounded-md bg-navy font-mono text-[11px] font-bold text-surface">
-        AL
-      </span>
-      <span className="text-[15px] font-bold tracking-tight text-navy">AccessLens</span>
-      <span className="ml-1 hidden rounded-full border border-rule px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted font-bold sm:inline">
-        WCAG 2.2 Auditor
-      </span>
+    <div className="flex items-center gap-2.5 group cursor-pointer">
+      <AccessLensLogo className="size-8 transition-transform duration-300 group-hover:scale-105" />
+      <div className="flex flex-col">
+        <span className="text-[16px] font-black tracking-tight text-navy leading-none">
+          Access<span className="text-action font-black">Lens</span>
+        </span>
+        <span className="font-mono text-[9px] uppercase tracking-wider text-muted font-bold mt-0.5">
+          WCAG 2.2 Auditor
+        </span>
+      </div>
     </div>
   );
 }
