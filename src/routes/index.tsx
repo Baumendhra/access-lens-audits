@@ -39,6 +39,7 @@ import {
   ShoppingCart,
   Store,
   Globe,
+  ChevronUp,
 } from "lucide-react";
 
 import { SkipLink } from "../components/SkipLink";
@@ -48,12 +49,15 @@ import { PersonaSimulator } from "../components/PersonaSimulator";
 import { BeforeAfterView } from "../components/BeforeAfterView";
 import { CopilotPanel } from "../components/CopilotPanel";
 import { ReportExporter } from "../components/ReportExporter";
+import { CommandPalette } from "../components/CommandPalette";
+import { NotificationsDrawer } from "../components/NotificationsDrawer";
+import { WordPressModal } from "../components/WordPressModal";
 
 import {
   Issue,
   Severity,
   initialIssues,
-  userJourneys,
+  userJourneys as initialJourneys,
   presetTargets,
   getIssuesForUrl,
   calculateHealthScore,
@@ -104,6 +108,10 @@ function AccessLens() {
   const [scanDone, setScanDone] = useState(true);
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [showScannerPanel, setShowScannerPanel] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [wpModalOpen, setWpModalOpen] = useState(false);
 
   const announce = (msg: string) => {
     setLiveAnnouncement(msg);
@@ -126,9 +134,9 @@ function AccessLens() {
     const scanUrl = targetUrlToScan || url;
     setInApp(true);
     setSelectedIssue(null);
-    setView("scan");
     setScanRunning(true);
     setScanDone(false);
+    setShowScannerPanel(true);
     announce(`Starting accessibility audit scan for ${scanUrl}...`);
 
     window.setTimeout(() => {
@@ -136,7 +144,6 @@ function AccessLens() {
       setIssuesList(newFindings);
       setScanRunning(false);
       setScanDone(true);
-      setView("overview");
       announce(`Audit complete for ${scanUrl}! Loaded ${newFindings.length} findings.`);
       showToast(`Scan finished for ${scanUrl}! Health score updated.`);
     }, 1800);
@@ -158,6 +165,37 @@ function AccessLens() {
   return (
     <div className="min-h-screen bg-canvas text-ink antialiased">
       <SkipLink />
+
+      {/* Global Command Palette (⌘K) */}
+      <CommandPalette
+        isOpen={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        issues={issuesList}
+        onSelectIssue={(issue) => {
+          setSelectedIssue(issue);
+          setView("overview");
+        }}
+        onSelectTarget={(target) => {
+          setUrl(target);
+          runScan(target);
+        }}
+        onNavigateView={(v) => setView(v as View)}
+      />
+
+      {/* Header Notifications Drawer */}
+      <NotificationsDrawer
+        isOpen={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        activeTarget={url}
+      />
+
+      {/* WordPress Connector Modal */}
+      <WordPressModal
+        isOpen={wpModalOpen}
+        onClose={() => setWpModalOpen(false)}
+        onConnected={(site) => showToast(`Connected WordPress plugin to ${site}`)}
+      />
+
       {/* Screen Reader Live Region */}
       <div role="status" aria-live="polite" className="sr-only">
         {liveAnnouncement}
@@ -186,11 +224,14 @@ function AccessLens() {
         mobileNav={mobileNav}
         setMobileNav={setMobileNav}
         onNewScan={() => {
-          setView("scan");
+          setView("overview");
+          setShowScannerPanel(true);
           setScanDone(false);
         }}
         openIssuesCount={issuesList.filter((i) => i.status === "open").length}
         activeTarget={url}
+        onOpenCmd={() => setCmdOpen(true)}
+        onOpenNotif={() => setNotifOpen(!notifOpen)}
       >
         {selectedIssue ? (
           <IssueDetail
@@ -204,10 +245,14 @@ function AccessLens() {
         ) : view === "overview" ? (
           <Overview
             url={url}
+            setUrl={setUrl}
             issues={issuesList}
             onIssue={setSelectedIssue}
-            onScan={() => setView("scan")}
+            onRunScan={(target) => runScan(target)}
+            scanRunning={scanRunning}
             scanDone={scanDone}
+            showScannerPanel={showScannerPanel}
+            setShowScannerPanel={setShowScannerPanel}
             onNavigate={(v) => setView(v)}
           />
         ) : view === "scan" ? (
@@ -236,7 +281,7 @@ function AccessLens() {
         ) : view === "reports" ? (
           <Reports issues={issuesList} url={url} />
         ) : view === "integrations" ? (
-          <Integrations issues={issuesList} />
+          <Integrations issues={issuesList} onConnectWp={() => setWpModalOpen(true)} />
         ) : (
           <SettingsView />
         )}
@@ -319,6 +364,8 @@ function AppShell({
   onNewScan,
   openIssuesCount,
   activeTarget,
+  onOpenCmd,
+  onOpenNotif,
 }: {
   children: React.ReactNode;
   view: View;
@@ -328,6 +375,8 @@ function AppShell({
   onNewScan: () => void;
   openIssuesCount: number;
   activeTarget: string;
+  onOpenCmd: () => void;
+  onOpenNotif: () => void;
 }) {
   return (
     <div className="flex min-h-screen">
@@ -381,7 +430,7 @@ function AppShell({
               </span>
               <span className="text-xs font-bold text-navy truncate">{activeTarget}</span>
             </div>
-            <p className="mt-1.5 truncate font-mono text-[10px] text-muted">Target Audit Active</p>
+            <p className="mt-1.5 truncate font-mono text-[10px] text-muted font-medium">Target Audit Active</p>
             <button
               onClick={onNewScan}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border border-rule bg-surface py-1.5 text-xs font-bold text-navy transition hover:bg-ink/5"
@@ -397,7 +446,7 @@ function AppShell({
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-bold text-navy">Jordan Davis</p>
-              <p className="truncate font-mono text-[10px] text-muted">Pro Auditor Workspace</p>
+              <p className="truncate font-mono text-[10px] text-muted font-medium">Pro Auditor Workspace</p>
             </div>
           </div>
         </div>
@@ -413,18 +462,26 @@ function AppShell({
             >
               <Menu className="size-5" />
             </button>
-            <div className="hidden items-center gap-2 text-xs text-navy sm:flex font-medium">
-              <Search className="size-4 text-muted" />
+
+            {/* Interactive Header Search Command Palette Trigger */}
+            <button
+              onClick={onOpenCmd}
+              className="hidden items-center gap-2 text-xs text-navy sm:flex font-medium rounded-md border border-rule bg-canvas/60 px-3 py-1.5 hover:bg-canvas transition"
+            >
+              <Search className="size-4 text-action" />
               <span>Search target sites, findings, user journeys…</span>
-              <kbd className="ml-2 rounded border border-rule px-1.5 py-0.5 font-mono text-[9px] text-muted">⌘K</kbd>
-            </div>
+              <kbd className="ml-3 rounded border border-rule bg-surface px-1.5 py-0.5 font-mono text-[9px] text-muted font-bold">⌘K</kbd>
+            </button>
+
             <span className="font-mono text-[10px] uppercase tracking-wider text-navy font-bold sm:hidden">
               AccessLens
             </span>
           </div>
+
           <div className="flex items-center gap-3">
-            <button className="rounded-md p-2 text-navy hover:bg-ink/5" aria-label="Notifications">
+            <button onClick={onOpenNotif} className="rounded-md p-2 text-navy hover:bg-ink/5 relative" aria-label="Notifications">
               <Bell className="size-4" />
+              <span className="absolute top-1 right-1 size-2 rounded-full bg-critical" />
             </button>
             <div className="hidden h-5 w-px bg-rule sm:block" />
             <div className="grid size-8 place-items-center rounded-full bg-navy text-xs font-bold text-surface">
@@ -443,21 +500,41 @@ function AppShell({
 
 function Overview({
   url,
+  setUrl,
   issues,
   onIssue,
-  onScan,
+  onRunScan,
+  scanRunning,
   scanDone,
+  showScannerPanel,
+  setShowScannerPanel,
   onNavigate,
 }: {
   url: string;
+  setUrl: (v: string) => void;
   issues: Issue[];
   onIssue: (issue: Issue) => void;
-  onScan: () => void;
+  onRunScan: (targetUrl?: string) => void;
+  scanRunning: boolean;
   scanDone: boolean;
+  showScannerPanel: boolean;
+  setShowScannerPanel: (v: boolean) => void;
   onNavigate: (view: View) => void;
 }) {
   const openIssues = issues.filter((i) => i.status === "open");
   const healthScore = calculateHealthScore(issues);
+
+  const steps = [
+    "Initializing browser automation engine",
+    "Loading live website DOM tree",
+    "Analyzing DOM element hierarchy",
+    "Inspecting accessibility tree & ARIA roles",
+    "Checking color contrast thresholds",
+    "Checking form labels & error status regions",
+    "Checking keyboard focus traps & tab order",
+    "Analyzing simulated user journeys",
+    "Generating executive report",
+  ];
 
   return (
     <div className="mx-auto max-w-7xl animate-rise space-y-6">
@@ -474,22 +551,98 @@ function Overview({
               <Sliders className="size-4 text-action" /> Before/After
             </button>
             <button
-              onClick={onScan}
+              onClick={() => setShowScannerPanel(!showScannerPanel)}
               className="flex items-center gap-2 rounded-md bg-navy px-4 py-2 text-xs font-bold text-surface hover:bg-action focus-visible:ring-2 focus-visible:ring-action"
             >
-              <Plus className="size-4" /> Change Target / Scan
+              {showScannerPanel ? <ChevronUp className="size-4" /> : <Plus className="size-4" />}
+              {showScannerPanel ? "Hide URL Scanner" : "Scan New Target"}
             </button>
           </div>
         }
       />
 
-      {scanDone && (
+      {/* NEW SCANNER SECTION AT TOP OF OVERVIEW */}
+      {showScannerPanel && (
+        <div className="rounded-lg border border-action/30 bg-surface p-6 shadow-md space-y-5 animate-rise">
+          <div className="flex items-center justify-between border-b border-rule pb-3">
+            <div className="flex items-center gap-2">
+              <Globe2 className="size-5 text-action" />
+              <h2 className="font-bold text-navy text-sm">Target URL Accessibility Scanner</h2>
+            </div>
+            <span className="rounded-full bg-action/10 px-2.5 py-0.5 font-mono text-[10px] text-action font-bold uppercase">
+              Live Auditor Engine
+            </span>
+          </div>
+
+          {/* Target URL Preset Chips */}
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-wider text-muted font-bold">Quick Target Presets</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {presetTargets.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => {
+                    setUrl(preset.domain);
+                    onRunScan(preset.domain);
+                  }}
+                  className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-bold transition ${
+                    url === preset.domain
+                      ? "border-action bg-action/10 text-action shadow-xs"
+                      : "border-rule bg-canvas text-navy hover:bg-ink/5"
+                  }`}
+                >
+                  <span>{preset.name}</span>
+                  <span className="font-mono text-[10px] text-muted font-medium">({preset.domain})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-4">
+              <label className="block text-xs font-bold text-navy">
+                Website Target URL
+                <input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="e.g. www.amazon.in, github.com, or custom URL"
+                  className="mt-1.5 h-11 w-full rounded-md border border-rule bg-canvas px-3 font-mono text-xs font-bold text-navy outline-none focus:border-action"
+                />
+              </label>
+              <button
+                onClick={() => onRunScan(url)}
+                disabled={scanRunning}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-navy text-xs font-bold text-surface hover:bg-action transition disabled:opacity-60 shadow-xs"
+              >
+                {scanRunning ? (
+                  <>
+                    <Zap className="size-4 animate-pulse text-passed" /> Auditing {url}...
+                  </>
+                ) : (
+                  <>
+                    <Play className="size-4" /> Start Audit Scan for {url}
+                  </>
+                )}
+              </button>
+            </div>
+
+            <ScanProgress running={scanRunning} done={scanDone} steps={steps} />
+          </div>
+        </div>
+      )}
+
+      {scanDone && !showScannerPanel && (
         <div className="flex items-center justify-between rounded-md border border-passed/30 bg-passed/10 px-4 py-3 text-xs text-passed font-semibold shadow-xs">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="size-4 shrink-0" />
             <span>Audit scan loaded with {issues.length} active findings for {url}.</span>
           </div>
-          <span className="font-mono text-[10px] uppercase tracking-wider font-bold">Active Engine</span>
+          <button
+            onClick={() => setShowScannerPanel(true)}
+            className="font-mono text-[10px] uppercase tracking-wider font-bold text-passed hover:underline"
+          >
+            Re-scan / Change Target →
+          </button>
         </div>
       )}
 
@@ -571,7 +724,7 @@ function NewScan({
               }`}
             >
               <span>{preset.name}</span>
-              <span className="font-mono text-[10px] text-muted">({preset.domain})</span>
+              <span className="font-mono text-[10px] text-muted font-medium">({preset.domain})</span>
             </button>
           ))}
         </div>
@@ -665,7 +818,7 @@ function ScanProgress({ running, done, steps }: { running: boolean; done: boolea
           <div
             key={step}
             className={`relative flex items-center gap-3 text-xs ${
-              index > activeIndex ? "text-muted" : "text-navy font-bold"
+              index > activeIndex ? "text-muted font-medium" : "text-navy font-bold"
             }`}
           >
             <span
@@ -951,7 +1104,32 @@ function IssueDetail({
 }
 
 function Journeys({ issues, onIssue }: { issues: Issue[]; onIssue: (issue: Issue) => void }) {
-  const [selectedJourney, setSelectedJourney] = useState(userJourneys[0]);
+  const [journeys, setJourneys] = useState(initialJourneys);
+  const [selectedJourney, setSelectedJourney] = useState(initialJourneys[0]);
+  const [simulating, setSimulating] = useState(false);
+
+  const currentJourney = journeys.find((j) => j.id === selectedJourney.id) || journeys[0];
+
+  const handleFixJourneyStep = () => {
+    setJourneys((prev) =>
+      prev.map((j) => {
+        if (j.id === currentJourney.id) {
+          return {
+            ...j,
+            status: "passed",
+            health: 100,
+            steps: j.steps.map((s) => ({ ...s, status: "passed", details: `${s.details} [Fixed: Focus trap resolved]` })),
+          };
+        }
+        return j;
+      })
+    );
+  };
+
+  const runJourneySimulation = () => {
+    setSimulating(true);
+    setTimeout(() => setSimulating(false), 2000);
+  };
 
   return (
     <div className="mx-auto max-w-7xl animate-rise space-y-6">
@@ -959,22 +1137,49 @@ function Journeys({ issues, onIssue }: { issues: Issue[]; onIssue: (issue: Issue
         eyebrow="Workspace / User journeys"
         title="Accessibility Journey Testing"
         description="Evaluate multi-step workflows (checkout, login, registration) using persona testing profiles."
+        action={
+          <button
+            onClick={runJourneySimulation}
+            disabled={simulating}
+            className="flex items-center gap-2 rounded-md bg-navy px-4 py-2 text-xs font-bold text-surface hover:bg-action disabled:opacity-60"
+          >
+            <Play className={`size-3.5 ${simulating ? "animate-spin" : ""}`} />
+            {simulating ? "Simulating Workflow..." : "Play Journey Simulation"}
+          </button>
+        }
       />
+
+      {/* Journey Selector Tabs */}
+      <div className="flex gap-2 border-b border-rule pb-3 overflow-x-auto">
+        {journeys.map((j) => (
+          <button
+            key={j.id}
+            onClick={() => setSelectedJourney(j)}
+            className={`rounded-lg border px-4 py-2 text-xs font-bold transition shrink-0 ${
+              selectedJourney.id === j.id
+                ? "border-action bg-action/10 text-action shadow-xs"
+                : "border-rule bg-surface text-navy hover:bg-ink/5"
+            }`}
+          >
+            {j.title}
+          </button>
+        ))}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
         <div className="rounded-lg border border-rule bg-surface p-5 shadow-xs">
           <div className="flex items-center justify-between border-b border-rule pb-4">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-wider text-muted font-bold">Workflow simulation</p>
-              <h2 className="mt-1 text-lg font-bold text-navy">{selectedJourney.title}</h2>
+              <h2 className="mt-1 text-lg font-bold text-navy">{currentJourney.title}</h2>
             </div>
-            <span className="rounded-full bg-serious/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-serious font-bold">
-              {selectedJourney.status}
+            <span className={`rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider font-bold ${currentJourney.status === "passed" ? "bg-passed/10 text-passed" : "bg-serious/10 text-serious"}`}>
+              {currentJourney.status}
             </span>
           </div>
 
-          <div className="mt-5 space-y-4">
-            {selectedJourney.steps.map((step) => (
+          <div className="mt-5 space-y-3">
+            {currentJourney.steps.map((step) => (
               <div key={step.id} className="flex items-start gap-3 rounded-lg border border-rule p-3 bg-canvas/40">
                 <div
                   className={`grid size-7 place-items-center rounded-full mt-0.5 shrink-0 ${
@@ -1006,24 +1211,42 @@ function Journeys({ issues, onIssue }: { issues: Issue[]; onIssue: (issue: Issue
         </div>
 
         <div className="space-y-5">
-          <div className="rounded-lg border border-critical/20 bg-critical/5 p-5 shadow-xs">
-            <div className="flex items-center gap-2 text-critical font-bold">
-              <AlertCircle className="size-5" />
-              <h2>Journey Blocked Alert</h2>
+          {currentJourney.status !== "passed" ? (
+            <div className="rounded-lg border border-critical/20 bg-critical/5 p-5 shadow-xs space-y-3">
+              <div className="flex items-center gap-2 text-critical font-bold">
+                <AlertCircle className="size-5" />
+                <h2>Journey Blocked Alert</h2>
+              </div>
+              <p className="text-xs leading-relaxed text-navy font-medium">
+                Keyboard focus was lost when payment gateway modal opened in Step 7. Users navigating via Tab key cannot confirm payment.
+              </p>
+              <button
+                onClick={handleFixJourneyStep}
+                className="flex items-center gap-2 rounded-md bg-navy px-3.5 py-2 text-xs font-bold text-surface hover:bg-action transition"
+              >
+                <CheckCircle2 className="size-3.5 text-passed" /> Fix Focus Trap &amp; Resolve Journey
+              </button>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-navy font-medium">
-              Keyboard focus was lost when payment gateway modal opened in Step 7. Users navigating via Tab key cannot confirm payment.
-            </p>
-          </div>
+          ) : (
+            <div className="rounded-lg border border-passed/30 bg-passed/10 p-5 shadow-xs space-y-2 text-passed font-bold">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="size-5" />
+                <h2>Journey 100% Accessible!</h2>
+              </div>
+              <p className="text-xs text-navy font-medium">All workflow steps verified for keyboard and screen reader personas.</p>
+            </div>
+          )}
 
           <div className="rounded-lg border border-rule bg-surface p-5 shadow-xs">
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted font-bold">Workflow Health Metric</p>
             <div className="mt-2 flex items-end justify-between">
-              <span className="font-mono text-4xl font-bold text-navy">{selectedJourney.health}%</span>
-              <span className="font-mono text-xs text-serious font-bold">Needs attention</span>
+              <span className="font-mono text-4xl font-bold text-navy">{currentJourney.health}%</span>
+              <span className={`font-mono text-xs font-bold ${currentJourney.status === "passed" ? "text-passed" : "text-serious"}`}>
+                {currentJourney.status === "passed" ? "Verified Passed" : "Needs attention"}
+              </span>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink/10">
-              <div className="h-full rounded-full bg-serious" style={{ width: `${selectedJourney.health}%` }} />
+              <div className={`h-full rounded-full ${currentJourney.status === "passed" ? "bg-passed" : "bg-serious"}`} style={{ width: `${currentJourney.health}%` }} />
             </div>
           </div>
         </div>
@@ -1045,7 +1268,7 @@ function Reports({ issues, url }: { issues: Issue[]; url: string }) {
   );
 }
 
-function Integrations({ issues }: { issues: Issue[] }) {
+function Integrations({ issues, onConnectWp }: { issues: Issue[]; onConnectWp: () => void }) {
   const [ciRunning, setCiRunning] = useState(false);
   const [ciSuccess, setCiSuccess] = useState<boolean | null>(null);
 
@@ -1068,24 +1291,30 @@ function Integrations({ issues }: { issues: Issue[] }) {
 
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         {[
-          { title: "GitHub Actions", text: "Fail CI builds when new critical or serious findings appear.", icon: Zap, status: "Available" },
-          { title: "GitHub Pull Requests", text: "Annotate changed files directly inside pull request reviews.", icon: GitBranch, status: "Available" },
-          { title: "Vercel Deployments", text: "Compare accessibility health score trends across production deploys.", icon: Globe2, status: "Coming soon" },
-          { title: "WordPress Plugin", text: "Scan WordPress pages automatically on publish.", icon: Link2, status: "Available" },
-        ].map(({ title, text, icon: Icon, status }) => (
-          <div key={title} className="rounded-lg border border-rule bg-surface p-5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <div className="grid size-10 place-items-center rounded-md bg-navy text-surface">
-                <Icon className="size-5" />
+          { title: "GitHub Actions", text: "Fail CI builds when new critical or serious findings appear.", icon: Zap, status: "Available", action: runCiCheck, btnText: "Run CI Test" },
+          { title: "GitHub Pull Requests", text: "Annotate changed files directly inside pull request reviews.", icon: GitBranch, status: "Available", action: runCiCheck, btnText: "Check PR #42" },
+          { title: "Vercel Deployments", text: "Compare accessibility health score trends across production deploys.", icon: Globe2, status: "Coming soon", action: () => {}, btnText: "Configure" },
+          { title: "WordPress Plugin", text: "Scan WordPress pages automatically on publish.", icon: Link2, status: "Available", action: onConnectWp, btnText: "Connect WordPress" },
+        ].map(({ title, text, icon: Icon, status, action, btnText }) => (
+          <div key={title} className="rounded-lg border border-rule bg-surface p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="grid size-10 place-items-center rounded-md bg-navy text-surface">
+                  <Icon className="size-5" />
+                </div>
+                <span className="rounded-full bg-passed/10 px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-passed font-bold">
+                  {status}
+                </span>
               </div>
-              <span className="rounded-full bg-passed/10 px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-passed font-bold">
-                {status}
-              </span>
+              <h2 className="mt-4 font-bold text-navy text-sm">{title}</h2>
+              <p className="mt-1 text-xs text-navy font-medium leading-relaxed">{text}</p>
             </div>
-            <h2 className="mt-4 font-bold text-navy text-sm">{title}</h2>
-            <p className="mt-1 text-xs text-navy font-medium leading-relaxed min-h-10">{text}</p>
-            <button className="mt-4 flex items-center gap-1.5 text-xs font-bold text-action hover:underline">
-              Configure <ArrowRight className="size-3.5" />
+            <button
+              onClick={action}
+              className="mt-4 flex items-center justify-between rounded-md border border-rule bg-canvas px-3 py-2 text-xs font-bold text-navy hover:bg-ink/5 transition"
+            >
+              <span>{btnText}</span>
+              <ArrowRight className="size-3.5 text-action" />
             </button>
           </div>
         ))}
